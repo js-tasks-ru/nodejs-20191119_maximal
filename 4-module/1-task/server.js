@@ -1,18 +1,40 @@
 const url = require('url');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 
 const server = new http.Server();
 
 server.on('request', (req, res) => {
+  function SendError(err) {
+    res.statusCode = 500;
+    res.end(`Server Error: ${err.message}`); 
+  }
+  
   const pathname = url.parse(req.url).pathname.slice(1);
 
   const filepath = path.join(__dirname, 'files', pathname);
 
   switch (req.method) {
     case 'GET':
+      if (/\//.test(pathname)) {
+        res.statusCode = 400;
+        res.end('File Not Found (SubDirectories are Not supported)');
+        break;        
+      }
+    
+      if (!fs.existsSync(filepath)) {
+        res.statusCode = 404;
+        res.end('File Not Found');
+        break;
+      }
+      
+      const file = fs.createReadStream(filepath);
+      file.on('error', SendError);
 
-      break;
+      res.statusCode = 200;
+      file.pipe(res).on('error', SendError);
+      break;        
 
     default:
       res.statusCode = 501;
