@@ -4,29 +4,27 @@ const path = require('path');
 const fs = require('fs');
 const { finished } = require('stream');
 const LimitSizeStream = require('./LimitSizeStream');
-const LimitExceededError = require('./LimitExceededError');
+//const LimitExceededError = require('./LimitExceededError');
 
 const server = new http.Server();
 
 server.on('request', (req, res) => {
-  //let file = '';
-  
+
   function SendError(err, errCode, file) {
-    console.log('MAX: SendError ' + err + ' --- ' + file.path);
+    //console.log('MAX: SendError ' + err + ' --- ' + file.path);
 
     if (file) {
       file.once('close', () => {
         if (fs.existsSync(file.path)) 
           fs.unlinkSync(file.path);    
-        console.log('MAX: SendError unlink');  
+          //console.log('MAX: SendError unlink');  
+          res.statusCode = errCode;
+          res.end(`Server Error: ${err.message}`); 
       })
 
-      file.close()
-      console.log('MAX: SendError close');
+      file.close();
+      //console.log('MAX: SendError close');
     }
-
-    res.statusCode = errCode;
-    res.end(`Server Error: ${err.message}`); 
   }
 
   const pathname = url.parse(req.url).pathname.slice(1);
@@ -35,7 +33,7 @@ server.on('request', (req, res) => {
 
   switch (req.method) {
     case 'POST':
-        console.log('MAX: NEW POST ' + pathname);
+        //console.log('MAX: NEW POST ' + pathname);
     
         if (/\//.test(pathname)) {
           res.statusCode = 400;
@@ -49,10 +47,8 @@ server.on('request', (req, res) => {
           break;
         }        
 
-      //req.on('error', SendError);
-
       const file = fs.createWriteStream(filepath);
-      //file.on('error', SendError);
+      file.on('error', SendError);
       
       const limitStream = new LimitSizeStream({limit: 1*1024*1024});
         limitStream.on('error', (err) => {
@@ -61,27 +57,19 @@ server.on('request', (req, res) => {
       
       finished(req, (err) => {
         if (err) {
-          console.log('MAX:finished: Stream error');
+          //console.log('MAX:finished: Stream error');
           SendError(err, 500, file);
         } else {
-          console.log('MAX:finished: Stream is done reading.');
+          //console.log('MAX:finished: Stream is done reading.');
           file.close;
           res.statusCode = 201;
           res.end('File Saved.');        
          }
         req.resume();
-        console.log('MAX:finished: Resumed.');
+        //console.log('MAX:finished: Resumed.');
       });   
 
       req.pipe(limitStream).pipe(file);
-      
-      /*file.once('finish', () => {  
-        console.log('MAX:finish EVENT ' + file);
-
-        file.close;
-        res.statusCode = 201;
-        res.end('File Saved EVENT.');        
-      });*/
       break;    
 
     default:
@@ -89,7 +77,5 @@ server.on('request', (req, res) => {
       res.end('Not implemented');
   }
 });
-
-//server.on('error', error => {console.error(error());});
 
 module.exports = server;
