@@ -1,6 +1,7 @@
 const url = require('url');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 
 const server = new http.Server();
 
@@ -11,7 +12,22 @@ server.on('request', (req, res) => {
 
   switch (req.method) {
     case 'DELETE':
-
+      if (/\//.test(pathname)) {
+        res.statusCode = 400;
+        res.end('File Not Found (SubDirectories are Not supported)');
+        break;        
+      }
+    
+      if (!fs.existsSync(filepath)) {
+        res.statusCode = 404;
+        res.end('File Not Found');
+        break;
+      }
+      
+      fs.unlink(filepath, () => {
+        res.statusCode = 200;
+        res.end('File Deleted')
+      });
       break;
 
     default:
