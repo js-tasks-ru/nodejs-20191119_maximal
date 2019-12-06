@@ -12,7 +12,7 @@ server.on('request', (req, res) => {
 
   switch (req.method) {
     case 'DELETE':
-      if (/\//.test(pathname)) {
+      if (pathname.includes('/') || pathname.includes('..')) {
         res.statusCode = 400;
         res.end('File Not Found (SubDirectories are Not supported)');
         break;        
@@ -24,9 +24,14 @@ server.on('request', (req, res) => {
         break;
       }
       
-      fs.unlink(filepath, () => {
-        res.statusCode = 200;
-        res.end('File Deleted')
+      fs.unlink(filepath, (error) => {
+        if (error) {
+          res.statusCode = 500;
+          res.end('Server Error' + error);
+        } else {
+          res.statusCode = 200;
+          res.end('File Deleted')
+        }
       });
       break;
 
